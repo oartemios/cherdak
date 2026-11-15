@@ -1,0 +1,19 @@
+# Local data and generated audio
+.notes.sqlite3*
+tags.json
+.voice-profiles/
+.voice-sample/
+.speech-cache/
+.speech-jobs/
+
+# Models and virtual environments
+models/
+voices/
+.venv/
+.piper-env/
+.clone-env/
+
+# Python and OS artifacts
+__pycache__/
+*.py[cod]
+.DS_Store
