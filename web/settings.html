@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Настройки — Мои миры</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+  <style>
+    .settings-page{max-width:950px;padding-top:12px}.settings-page .top{min-height:48px}.settings-page a{color:#bd93f9;text-decoration:none}.settings-page a:hover{text-decoration:underline}.settings-page h1{margin:24px 0 6px;font-size:clamp(36px,5vw,52px)}.settings-intro{color:#a5a5bb;margin:0 0 28px;font-size:14px}.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.settings-card{min-width:0;padding:20px;border:1px solid #44475a;background:#343746;border-radius:12px}.settings-card h2{margin:0 0 5px;font:24px Georgia,serif}.settings-card p{font-size:12px;color:#a5a5bb;line-height:1.5;margin:0 0 15px}.settings-card label{display:block;margin:13px 0 5px;font-size:12px;color:#c9c9d6}.settings-card input,.settings-card select{width:100%;height:39px;padding:8px 10px;border:1px solid #6272a4;border-radius:7px;background:#282a36;color:#f8f8f2;font:14px system-ui}.settings-card input:focus,.settings-card select:focus{outline:2px solid #bd93f9;outline-offset:1px}.settings-card input[type=number]{font-variant-numeric:tabular-nums}.settings-card .field-help{display:block;margin:5px 0;color:#a5a5bb;font-size:11px;line-height:1.4}.settings-card .two-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.settings-advanced{grid-column:1/-1}.settings-advanced summary{cursor:pointer;font:20px Georgia,serif}.settings-advanced .advanced-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 20px;margin-top:10px}.settings-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:18px 0}.settings-actions button{background:#bd93f9;color:#282a36;border-color:#bd93f9;font-weight:600;border-radius:8px}.settings-actions button:disabled{opacity:.55}.settings-message{padding:12px 14px;border:1px solid #6272a4;border-radius:8px;color:#f8f8f2;background:#343746;line-height:1.5;font-size:13px;margin:14px 0}.settings-message.error{border-color:#ff5555}.settings-page .light-hint{color:#a5a5bb;font-size:12px}.light .settings-card,.light .settings-message{background:#fff;border-color:#d4d9ce;color:#282a36}.light .settings-card label{color:#4e5b48}.light .settings-card input,.light .settings-card select{background:#f4f3ec;color:#282a36;border-color:#b9c3ae}.light .settings-card p,.light .settings-intro,.light .settings-card .field-help,.light .settings-page .light-hint{color:#66705e}.light .settings-page a{color:#4b7136}.light .settings-actions button{background:#405b32;border-color:#405b32;color:white}@media(max-width:650px){.settings-grid,.settings-advanced .advanced-grid{grid-template-columns:1fr}.settings-advanced{grid-column:auto}.settings-page{padding-left:18px;padding-right:18px}.settings-card{padding:16px}}
+  </style>
+</head>
+<body>
+<main class="settings-page">
+  <div class="top"><a class="brand" href="/"><span class="dot">✳</span> Личный архив</a><a href="/">← К проектам</a></div>
+  <h1>Настройки<span class="dot">.</span></h1>
+  <p class="settings-intro">Пути, модели и то, как выглядит ваш каталог.</p>
+  <section class="settings-card" aria-labelledby="interface-heading">
+    <h2 id="interface-heading">Интерфейс</h2>
+    <p>Эти предпочтения сохраняются в браузере и применяются сразу.</p>
+    <div class="settings-grid">
+      <div><label for="ui-theme">Тема</label><select id="ui-theme"><option value="dark">Тёмная</option><option value="light">Светлая</option></select></div>
+      <div><label for="ui-view">Вид проектов</label><select id="ui-view"><option value="cards">Карточки</option><option value="table">Таблица</option></select></div>
+      <div><label for="ui-group">Группировка</label><select id="ui-group"><option value="none">Без группировки</option><option value="tags">По тегам</option></select></div>
+      <div><label for="ui-sidebar">Инструмент боковой панели</label><select id="ui-sidebar"><option value="outline">Содержание</option><option value="notes">Заметки</option><option value="speech">Озвучивание</option></select></div>
+    </div>
+    <h2 style="margin-top:24px">Озвучивание</h2>
+    <div class="settings-grid">
+      <div><label for="ui-voice">Выбранный голос</label><select id="ui-voice"><optgroup label="Piper"><option value="local:ruslan">Руслан</option><option value="local:irina">Ирина</option><option value="local:dmitri">Дмитрий</option></optgroup><optgroup id="ui-custom-voices" label="Мои голоса"></optgroup><optgroup label="OpenAI · платно"><option value="openai:marin">Marin</option><option value="openai:cedar">Cedar</option><option value="openai:coral">Coral</option><option value="openai:alloy">Alloy</option><option value="openai:nova">Nova</option><option value="openai:shimmer">Shimmer</option></optgroup></select></div>
+      <div><label for="ui-sentences">Предложений в фрагменте своего голоса</label><select id="ui-sentences"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></div>
+      <div><label for="ui-speed">Скорость Piper</label><select id="ui-speed"><option value="0.7">0,7×</option><option value="0.8">0,8×</option><option value="0.9">0,9×</option><option value="1">1,0×</option><option value="1.1">1,1×</option><option value="1.2">1,2×</option><option value="1.3">1,3×</option></select></div>
+    </div>
+    <p id="ui-status" class="light-hint" role="status"></p>
+  </section>
+  <form id="settings-form">
+    <p class="settings-intro" style="margin:30px 0 14px">Настройки ниже сохраняются на компьютере и применяются после перезапуска сервера.</p>
+    <div id="server-message" class="settings-message" role="status" hidden></div><p id="path-status" class="light-hint" role="status" hidden></p>
+    <div class="settings-grid">
+      <section class="settings-card"><h2>Папки проектов</h2><p>Папки, из которых каталог собирает список проектов.</p>
+        <label for="books_root">Книги</label><input id="books_root" name="books_root" type="text" required spellcheck="false">
+        <label for="games_root">Игры</label><input id="games_root" name="games_root" type="text" required spellcheck="false">
+        <span class="field-help">Можно использовать <code>~</code> для домашней папки.</span>
+      </section>
+      <section class="settings-card"><h2>Модели и голоса</h2><p>Пути к уже установленным локальным моделям.</p>
+        <label for="voices_dir">Голоса Piper</label><input id="voices_dir" name="voices_dir" type="text" required spellcheck="false">
+        <label for="qwen_tts_model">Qwen TTS · озвучивание</label><input id="qwen_tts_model" name="qwen_tts_model" type="text" required spellcheck="false">
+        <label for="qwen_asr_model">Qwen ASR · распознавание</label><input id="qwen_asr_model" name="qwen_asr_model" type="text" required spellcheck="false">
+        <span class="field-help">Относительные пути отсчитываются от папки сайта.</span>
+      </section>
+      <details class="settings-card settings-advanced"><summary>Дополнительные параметры</summary>
+        <div class="advanced-grid">
+          <div><label for="piper_python">Python для Piper</label><input id="piper_python" name="piper_python" type="text" required spellcheck="false">
+            <label for="mlx_python">Python для Qwen / MLX</label><input id="mlx_python" name="mlx_python" type="text" required spellcheck="false">
+            <label for="openai_model">Модель OpenAI</label><input id="openai_model" name="openai_model" type="text" required spellcheck="false"><span id="openai-key-status" class="field-help"></span>
+          </div>
+          <div><label for="port">Порт сервера</label><input id="port" name="port" type="number" min="1" max="65535" step="1" required>
+            <div class="two-fields"><div><label for="qwen_timeout">TTS, секунд</label><input id="qwen_timeout" name="qwen_timeout" type="number" min="1" step="1" required></div><div><label for="asr_timeout">ASR, секунд</label><input id="asr_timeout" name="asr_timeout" type="number" min="1" step="1" required></div><div><label for="piper_timeout">Piper, секунд</label><input id="piper_timeout" name="piper_timeout" type="number" min="1" step="1" required></div><div><label for="piper_sentence_silence">Пауза Piper, с</label><input id="piper_sentence_silence" name="piper_sentence_silence" type="number" min="0" max="10" step="0.05" required></div></div>
+          </div>
+        </div>
+      </details>
+    </div>
+    <div class="settings-actions"><button id="save-settings" type="submit" disabled>Сохранить настройки</button><span class="light-hint">Текущий сервер продолжит работать с прежними настройками.</span></div>
+  </form>
+</main>
+<script type="module" src="/assets/settings.js"></script>
+</body>
+</html>

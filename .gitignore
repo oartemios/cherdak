@@ -17,3 +17,11 @@ voices/
 __pycache__/
 *.py[cod]
 .DS_Store
+
+# Local configuration and secrets
+config.local.json
+.env
+.env.*
+
+# Private local voice experiments
+artifacts/

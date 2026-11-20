@@ -1,0 +1,12 @@
+{
+  "voice_description": "A Russian speaking adult woman, warm mid-range voice, clear diction and natural conversational delivery.",
+  "reference_text": "Сегодня вечером я ждала тебя у старого дома. За окном тихо шумел дождь, а в комнате пахло чаем.",
+  "segments": [
+    {"emotion": "calm", "text": "Я ждала тебя у старого дома. Дождь уже почти закончился."},
+    {"emotion": "joy", "text": "Ты пришёл! Я так рада тебя видеть!"},
+    {"emotion": "fear", "text": "Подожди... Ты тоже слышал шаги за дверью?"},
+    {"emotion": "anger", "text": "Хватит прятаться! Выходи сейчас же!"},
+    {"emotion": "sarcasm", "text": "Ну конечно, отличный момент для шуток."},
+    {"emotion": "whisper", "text": "Тихо. Кажется, он всё ещё здесь."}
+  ]
+}

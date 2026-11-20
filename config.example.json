@@ -1,0 +1,15 @@
+{
+  "books_root": "~/Documents/stories/books",
+  "games_root": "~/Development/games",
+  "voices_dir": "voices",
+  "qwen_tts_model": "models/qwen3-tts-0.6b",
+  "qwen_asr_model": "~/.cache/lm-studio/models/mlx-community/Qwen3-ASR-0.6B-8bit",
+  "piper_python": ".piper-env/bin/python",
+  "mlx_python": ".clone-env/bin/python",
+  "port": 8765,
+  "qwen_timeout": 150,
+  "piper_timeout": 120,
+  "asr_timeout": 300,
+  "piper_sentence_silence": 0.45,
+  "openai_model": "gpt-4o-mini-tts"
+}
