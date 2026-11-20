@@ -205,7 +205,7 @@ class Handler(BaseHTTPRequestHandler):
                 with GENERATION_LOCK:
                     audio, content_type = synthesize(data, SETTINGS, BASE, ROOTS, speech_cache_key, run_generation_process)
                 self.send_response(200); self.send_header('Content-Type', content_type); self.send_header('Content-Length', str(len(audio))); self.end_headers(); self.wfile.write(audio)
-            except SpeechRequestError as exc: self.send_error(exc.status, str(exc))
+            except SpeechRequestError as exc: self.send_json({'error': str(exc)}, exc.status)
             except (ValueError, OSError, TypeError): self.send_error(400)
             return
         if self.path == '/api/transcribe-sample':

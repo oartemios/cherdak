@@ -90,7 +90,7 @@ def speech_cache_key(job, text):
             model_identity = b'' if SETTINGS.qwen_tts_model == (BASE / 'models/qwen3-tts-0.6b').absolute() and SETTINGS.mlx_python == (BASE / '.clone-env/bin/python').absolute() else (str(SETTINGS.qwen_tts_model) + ':' + str(SETTINGS.mlx_python)).encode()
             version = b'qwen-v2-short-sentences'
             if engine == 'f5':
-                version = b'f5-russian-accent-tune-ruaccent-v1'
+                version = b'f5-russian-accent-tune-ruaccent-v2'
                 model_identity = str(SETTINGS.f5_python).encode()
             return hashlib.sha256(text.encode() + (folder / 'reference.wav').read_bytes() + (folder / 'transcript.txt').read_text(encoding='utf-8').encode() + version + model_identity).hexdigest()
         except OSError: return None
@@ -184,7 +184,7 @@ def run_speech_job(job_id):
                         retries[index] = attempts + 1
                         save_job(job_id, job)
                         continue
-                job['state'] = 'error'; job['error'] = 'Не удалось создать аудиофрагмент. Проверьте настройки голоса и доступность модели.'; save_job(job_id, job)
+                job['state'] = 'error'; job['error'] = str(exc) if exc.status == 422 else 'Не удалось создать аудиофрагмент. Проверьте настройки голоса и доступность модели.'; save_job(job_id, job)
             return
         except Exception:
             with JOBS_LOCK: job['state'] = 'error'; job['error'] = 'Не удалось создать аудиофрагмент. Проверьте настройки голоса и доступность модели.'; save_job(job_id, job)

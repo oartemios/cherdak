@@ -1,4 +1,5 @@
 import hashlib
+import wave
 import io
 import json
 import os
@@ -197,7 +198,9 @@ class SpeechServiceTests(unittest.TestCase):
             reference = base / '.voice-sample'
             reference.mkdir()
             sample = reference / 'reference.wav'
-            sample.write_bytes(audio)
+            with wave.open(str(sample), 'wb') as wav:
+                wav.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+                wav.writeframes(bytes(32000))
             (reference / 'transcript.txt').write_text(transcript, encoding='utf-8')
             with patch.object(speech_jobs, 'BASE', base):
                 key = speech_jobs.speech_cache_key
@@ -206,6 +209,12 @@ class SpeechServiceTests(unittest.TestCase):
                 args = (data, settings, base, {'books': base}, key)
                 self.assertEqual(speech_service.synthesize(*args, runner), (audio, 'audio/wav'))
                 self.assertEqual(speech_service.synthesize(*args, None), (audio, 'audio/wav'))
+                with wave.open(str(sample), 'wb') as wav:
+                    wav.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+                    wav.writeframes(bytes(13 * 8000 * 2))
+                with self.assertRaises(speech_service.SpeechRequestError) as error:
+                    speech_service.synthesize(*args, runner)
+                self.assertEqual(error.exception.status, 422)
 
         from unittest.mock import Mock
         accentizer = Mock()

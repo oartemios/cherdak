@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import wave
 
 from speech_engines import generate_f5, generate_openai, generate_piper, generate_qwen, generate_voice_design
 
@@ -11,6 +12,16 @@ class SpeechRequestError(RuntimeError):
     def __init__(self, status, message):
         super().__init__(message)
         self.status = status
+
+
+def validate_f5_reference(sample):
+    try:
+        with wave.open(str(sample), 'rb') as audio:
+            duration = audio.getnframes() / audio.getframerate()
+    except (OSError, EOFError, wave.Error) as exc:
+        raise SpeechRequestError(422, 'Для F5‑TTS нужен читаемый образец голоса в формате WAV.') from exc
+    if not 2 <= duration <= 12:
+        raise SpeechRequestError(422, 'Для F5‑TTS выберите запись голоса от 2 до 12 секунд с точной расшифровкой.')
 
 
 def synthesize(data, settings, base, roots, cache_key, runner, synthetic_reference=None):
@@ -55,6 +66,8 @@ def synthesize(data, settings, base, roots, cache_key, runner, synthetic_referen
         sample, transcript = folder / 'reference.wav', folder / 'transcript.txt'
         if not sample.is_file() or not transcript.is_file():
             raise SpeechRequestError(400, 'Voice sample is missing')
+        if engine == 'f5':
+            validate_f5_reference(sample)
     elif engine == 'synthetic':
         from synthetic_voice import voice_description
         try:
