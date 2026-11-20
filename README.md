@@ -95,7 +95,7 @@ VoiceDesign — экспериментальный режим. Первая ре
 [RUAccent](https://github.com/Den4ikAI/ruaccent) расставляет ударения в тексте и расшифровке образца.
 В редакторе фрагментов можно задать ударение вручную, например «замо́к».
 
-Установите FFmpeg и добавьте его в `PATH`. Из папки каталога выполните:
+Установите FFmpeg с динамическими библиотеками для [TorchCodec](https://github.com/meta-pytorch/torchcodec#installing-torchcodec) и проверьте команду `ffmpeg -version`. Из папки каталога выполните:
 
 ```sh
 python3.12 -m venv .f5-env

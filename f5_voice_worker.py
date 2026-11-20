@@ -1,6 +1,7 @@
 """Run Russian F5-TTS and RUAccent in the optional F5 environment."""
 import json
 import re
+import secrets
 import sys
 
 MODEL_REPO = 'Misha24-10/F5-TTS_RUSSIAN'
@@ -32,6 +33,8 @@ def main():
         ref_text=accent_text(accentizer, request['transcript']),
         gen_text=accent_text(accentizer, request['text']),
         file_wave=request['output'],
+        # F5-TTS also uses this seed as PYTHONHASHSEED for child processes.
+        seed=secrets.randbits(32),
     )
 
 
