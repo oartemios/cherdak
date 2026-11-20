@@ -5,6 +5,8 @@
   "qwen_tts_model": "models/qwen3-tts-0.6b",
   "qwen_asr_model": "~/.cache/lm-studio/models/mlx-community/Qwen3-ASR-0.6B-8bit",
   "piper_python": ".piper-env/bin/python",
+  "f5_python": ".f5-env/bin/python",
+  "f5_timeout": 600,
   "mlx_python": ".clone-env/bin/python",
   "port": 8765,
   "qwen_timeout": 150,
