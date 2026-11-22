@@ -3,8 +3,9 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import wave
 
-from speech_engines import generate_openai, generate_piper, generate_qwen, generate_voice_design
+from speech_engines import generate_f5, generate_openai, generate_piper, generate_qwen, generate_voice_design
 from speech_text import prepare_speech_text
 
 
@@ -12,6 +13,16 @@ class SpeechRequestError(RuntimeError):
     def __init__(self, status, message):
         super().__init__(message)
         self.status = status
+
+
+def validate_f5_reference(sample):
+    try:
+        with wave.open(str(sample), 'rb') as audio:
+            duration = audio.getnframes() / audio.getframerate()
+    except (OSError, EOFError, wave.Error) as exc:
+        raise SpeechRequestError(422, 'Для F5‑TTS нужен читаемый образец голоса в формате WAV.') from exc
+    if not 2 <= duration <= 12:
+        raise SpeechRequestError(422, 'Для F5‑TTS выберите запись голоса от 2 до 12 секунд с точной расшифровкой.')
 
 
 def synthesize(data, settings, base, roots, cache_key, runner, synthetic_reference=None):
@@ -32,7 +43,7 @@ def synthesize(data, settings, base, roots, cache_key, runner, synthetic_referen
             raise SpeechRequestError(400, 'Invalid repair')
         repair_key = (repair_job, repair_index)
     engine = data.get('engine')
-    if engine not in ('clone', 'local', 'openai', 'synthetic'):
+    if engine not in ('clone', 'local', 'openai', 'synthetic', 'f5'):
         raise SpeechRequestError(400, 'Invalid engine')
     if engine == 'openai':
         key = os.environ.get('OPENAI_API_KEY')
@@ -49,7 +60,7 @@ def synthesize(data, settings, base, roots, cache_key, runner, synthetic_referen
     kind, path = data.get('kind'), data.get('path')
     if kind not in roots or not isinstance(path, str) or not path:
         raise SpeechRequestError(400, 'Invalid project')
-    if engine == 'clone':
+    if engine in ('clone', 'f5'):
         voice_id = data.get('profile', '')
         if voice_id == 'legacy':
             folder = base / '.voice-sample'
@@ -60,6 +71,8 @@ def synthesize(data, settings, base, roots, cache_key, runner, synthetic_referen
         sample, transcript = folder / 'reference.wav', folder / 'transcript.txt'
         if not sample.is_file() or not transcript.is_file():
             raise SpeechRequestError(400, 'Voice sample is missing')
+        if engine == 'f5':
+            validate_f5_reference(sample)
     elif engine == 'synthetic':
         from synthetic_voice import voice_description
         try:
@@ -86,8 +99,9 @@ def synthesize(data, settings, base, roots, cache_key, runner, synthetic_referen
             cached = cache / (key + '.wav')
             if cached.is_file() and not force:
                 return cached.read_bytes(), 'audio/wav'
-        if engine == 'clone':
-            audio = generate_qwen(settings, text, sample, transcript.read_text(encoding='utf-8'), runner, repair_key)
+        if engine in ('clone', 'f5'):
+            generate = generate_f5 if engine == 'f5' else generate_qwen
+            audio = generate(settings, text, sample, transcript.read_text(encoding='utf-8'), runner, repair_key)
         elif engine == 'synthetic':
             if synthetic_reference is None:
                 audio = generate_voice_design(settings, text, description, runner, repair_key)

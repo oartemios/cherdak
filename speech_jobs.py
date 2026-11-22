@@ -116,14 +116,18 @@ def speech_cache_key(job, text):
     if engine == 'synthetic':
         identity = {'text': text, 'kind': settings.get('synthetic_kind', 'female'), 'age': settings.get('synthetic_age', 30), 'model': 'qwen3-tts-1.7b-voicedesign-8bit', 'version': 1}
         return hashlib.sha256(json.dumps(identity, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
-    if engine == 'clone':
-        identifier = settings.get('profile'); base = Path(__file__).resolve().parent
-        if identifier == 'legacy': folder = base / '.voice-sample'
-        elif isinstance(identifier, str) and re.fullmatch(r'[0-9a-f]{32}', identifier): folder = base / '.voice-profiles' / identifier
+    if engine in ('clone', 'f5'):
+        identifier = settings.get('profile')
+        if identifier == 'legacy': folder = BASE / '.voice-sample'
+        elif isinstance(identifier, str) and re.fullmatch(r'[0-9a-f]{32}', identifier): folder = BASE / '.voice-profiles' / identifier
         else: return None
         try:
             model_identity = b'' if SETTINGS.qwen_tts_model == (BASE / 'models/qwen3-tts-0.6b').absolute() and SETTINGS.mlx_python == (BASE / '.clone-env/bin/python').absolute() else (str(SETTINGS.qwen_tts_model) + ':' + str(SETTINGS.mlx_python)).encode()
-            return hashlib.sha256(text.encode() + (folder / 'reference.wav').read_bytes() + (folder / 'transcript.txt').read_text(encoding='utf-8').encode() + b'qwen-v2-short-sentences' + model_identity).hexdigest()
+            version = b'qwen-v2-short-sentences'
+            if engine == 'f5':
+                version = b'f5-russian-accent-tune-ruaccent-v2'
+                model_identity = str(SETTINGS.f5_python).encode()
+            return hashlib.sha256(text.encode() + (folder / 'reference.wav').read_bytes() + (folder / 'transcript.txt').read_text(encoding='utf-8').encode() + version + model_identity).hexdigest()
         except OSError: return None
     return None
 
@@ -216,7 +220,7 @@ def run_speech_job(job_id):
                         retries[index] = attempts + 1
                         save_job(job_id, job)
                         continue
-                job['state'] = 'error'; job['error'] = 'Не удалось создать аудиофрагмент. Проверьте настройки голоса и доступность модели.'; save_job(job_id, job)
+                job['state'] = 'error'; job['error'] = str(exc) if exc.status == 422 else 'Не удалось создать аудиофрагмент. Проверьте настройки голоса и доступность модели.'; save_job(job_id, job)
             return
         except Exception:
             with JOBS_LOCK: job['state'] = 'error'; job['error'] = 'Не удалось создать аудиофрагмент. Проверьте настройки голоса и доступность модели.'; save_job(job_id, job)
@@ -260,7 +264,7 @@ def regenerate_part(job_id, index):
                 try:
                     return synthesize(request_data, SETTINGS, BASE, ROOTS, speech_cache_key, run_generation_process, **({'synthetic_reference': synthetic_reference(job_id, job)} if anchored else {}))
                 except SpeechRequestError as exc:
-                    if exc.status != 504 or payload.get('engine') not in ('clone', 'synthetic') or depth >= 3 or len(text) <= 60: raise
+                    if exc.status != 504 or payload.get('engine') not in ('clone', 'synthetic', 'f5') or depth >= 3 or len(text) <= 60: raise
                     parts = split_speech(text, 'clone', 1)
                     if len(parts) == 1:
                         midpoint = len(text) // 2; cut = text.rfind(' ', 0, midpoint + 1)

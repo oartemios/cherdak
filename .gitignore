@@ -12,6 +12,7 @@ voices/
 .venv/
 .piper-env/
 .clone-env/
+.f5-env/
 
 # Python and OS artifacts
 __pycache__/

@@ -25,7 +25,7 @@ def prepare_speech_text(text):
 
 
 def split_speech(text, engine, count):
-    limit = min(600, 180 * count) if engine in ('clone', 'synthetic') else 1500
+    limit = min(600, 180 * count) if engine in ('clone', 'synthetic', 'f5') else 1500
     pieces = []
     for paragraph in re.split(r'\n+', text):
         paragraph = paragraph.strip()
@@ -54,7 +54,7 @@ def split_speech(text, engine, count):
             chunks.append(current); current = ''; total = 0
         current += (separator if current else '') + part
         total += 1
-        if forced or (engine in ('clone', 'synthetic') and total >= count):
+        if forced or (engine in ('clone', 'synthetic', 'f5') and total >= count):
             chunks.append(current); current = ''; total = 0
     if current: chunks.append(current)
     return chunks
