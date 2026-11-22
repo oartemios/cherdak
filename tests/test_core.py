@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import app_config
 import server
-from speech_text import split_speech
+from speech_text import prepare_speech_text, split_document_speech, split_speech
 
 
 class ConfigTests(unittest.TestCase):
@@ -44,6 +44,18 @@ class ConfigTests(unittest.TestCase):
 
 
 class SplitTests(unittest.TestCase):
+    def test_headings_quotes_and_dotted_numbers(self):
+        heading = 'Глава 1.2. Начало'
+        text = heading + '\n«Не спеши»\n«Я вернусь!» Кто-то ответил: 3.14 и 1.2.3.'
+        chunks, pauses = split_document_speech(text, 'synthetic', 3, {heading})
+        self.assertEqual(chunks, [heading, '«Не спеши»\n«Я вернусь!» Кто-то ответил: 3.14 и 1.2.3.'])
+        self.assertEqual(pauses, [heading])
+        self.assertEqual(prepare_speech_text(chunks[0]), 'Глава 1 точка 2, Начало.')
+        self.assertEqual(prepare_speech_text(chunks[1]),
+                         '«Не спеши». «Я вернусь!» Кто-то ответил: 3 точка 14 и 1 точка 2 точка 3.')
+        self.assertEqual(split_speech('«Я вернусь!» Кто-то ответил.', 'clone', 1),
+                         ['«Я вернусь!»', 'Кто-то ответил.'])
+
     def test_sentence_counts_and_text_preserved(self):
         text = 'Первое предложение. Второе предложение! Третье предложение?'
         self.assertEqual(split_speech(text, 'clone', 1), ['Первое предложение.', 'Второе предложение!', 'Третье предложение?'])
@@ -181,6 +193,7 @@ class SpeechServiceTests(unittest.TestCase):
             with patch.object(speech_service, 'generate_piper', return_value=b'audio') as generate:
                 preview = speech_service.synthesize(dict(data, no_cache=True), settings, base, {'books': base}, key, None)
                 self.assertEqual(preview, (b'audio', 'audio/wav'))
+                self.assertEqual(generate.call_args.args[1], 'Привет.')
                 self.assertFalse((base / '.speech-cache').exists())
                 speech_service.synthesize(data, settings, base, {'books': base}, key, None)
                 speech_service.synthesize(data, settings, base, {'books': base}, key, None)
