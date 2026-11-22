@@ -180,6 +180,59 @@ class HTTPTests(unittest.TestCase):
         self.assertEqual(file.read_text(encoding='utf-8'), 'Внешняя правка.')
 
 
+    def test_sentence_count_change_keeps_prepared_prefix_and_replans_remainder(self):
+        text = 'Заголовок\nПервое. Второе. Третье. Четвёртое.\nФинал\nПоследнее.'
+        request = {'kind': 'books', 'path': 'book/chapter.md', 'text': text,
+                   'engine': 'synthetic', 'sentences': 2, 'headings': ['Заголовок', 'Финал']}
+        with patch.object(server.EXECUTOR, 'submit') as submit:
+            _, _, body = self.post('/api/speech-job', request)
+            identifier = json.loads(body)['id']
+            job = speech_jobs.JOBS[identifier]
+            self.assertEqual(job['chunks'][:2], ['Заголовок', 'Первое. Второе.'])
+            folder = speech_jobs.JOB_STORAGE / identifier
+            reference = folder / 'synthetic-reference.wav'
+            reference.write_bytes(wav_bytes())
+            for index in range(2):
+                file = folder / f'{index}.audio'
+                file.write_bytes(wav_bytes())
+                job['files'].append((file, 'audio/wav'))
+            job['repairs'] = {'1': {'state': 'complete', 'pronunciation': 'Исправленный текст.'}}
+            job['state'] = 'paused'
+            speech_jobs.save_job(identifier, job)
+
+            _, _, body = self.post('/api/speech-job', dict(request, sentences=1))
+            self.assertEqual(json.loads(body), {'id': identifier, 'total': 6, 'heading_pauses': [0, 4]})
+            self.assertEqual(job['chunks'], ['Заголовок', 'Первое. Второе.', 'Третье.',
+                                             'Четвёртое.', 'Финал', 'Последнее.'])
+            self.assertEqual(len(job['files']), 2)
+            self.assertEqual(job['repairs']['1']['pronunciation'], 'Исправленный текст.')
+            self.assertEqual(reference.read_bytes(), wav_bytes())
+            self.assertEqual(self.get('/api/speech-part?id=' + identifier + '&index=1')[2], wav_bytes())
+            persisted = json.loads((folder / 'job.json').read_text())
+            self.assertEqual(persisted['chunks'], job['chunks'])
+            self.assertEqual(persisted['state'], 'queued')
+            self.assertEqual(submit.call_count, 2)
+
+            # Another tab changing the split while work is queued cannot start it again.
+            _, _, body = self.post('/api/speech-job', dict(request, sentences=3))
+            self.assertEqual(json.loads(body)['id'], identifier)
+            self.assertEqual(submit.call_count, 2)
+
+            # A different rendered text or a different voice requires a new job.
+            for params in ({'text': text.replace('Последнее.', 'Новое.')}, {'synthetic_age': 45}):
+                _, _, body = self.post('/api/speech-job', request | params)
+                self.assertNotEqual(json.loads(body)['id'], identifier)
+
+            for index in range(2, len(job['chunks'])):
+                file = folder / f'{index}.audio'
+                file.write_bytes(wav_bytes())
+                job['files'].append((file, 'audio/wav'))
+            job['state'] = 'complete'
+            submissions = submit.call_count
+            _, _, body = self.post('/api/speech-job', dict(request, sentences=4))
+            self.assertEqual(json.loads(body)['id'], identifier)
+            self.assertEqual(submit.call_count, submissions)
+
     def test_save_synthetic_reference_and_use_on_another_page(self):
         ident = 'a' * 32
         folder = self.root / 'jobs' / ident

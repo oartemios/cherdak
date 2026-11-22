@@ -13,7 +13,7 @@ import wave
 
 from app_config import BASE, SETTINGS
 from catalog_paths import valid_note_path as validate_note_path
-from speech_text import split_speech
+from speech_text import speech_resume_offset, split_speech
 from speech_service import synthesize, SpeechRequestError
 
 ROOTS = {'books': SETTINGS.books_root, 'games': SETTINGS.games_root}
@@ -70,6 +70,38 @@ def document_revision(settings):
     if not valid_note_path(kind, path): return None
     try: return hashlib.sha256((ROOTS[kind] / path).read_bytes()).hexdigest()
     except OSError: return None
+
+
+def matching_speech_job(settings, text, fingerprint, revision):
+    """Choose a job for the same document and voice under JOBS_LOCK."""
+    voice_settings = {key: value for key, value in settings.items() if key != '_heading_pauses'}
+    active_states = ('queued', 'generating', 'pausing')
+    best = best_rank = None
+    for identifier, job in JOBS.items():
+        state = job['state']
+        if job['cancelled'] or state not in (*active_states, 'complete', 'paused', 'error'):
+            continue
+        ready = len(job['files'])
+        exact = job['fingerprint'] == fingerprint
+        previous_revision = job.get('source_hash')
+        if previous_revision != revision and not (exact and previous_revision is None):
+            continue
+        offset = None
+        if not exact:
+            previous_settings = {key: value for key, value in job['settings'].items() if key != '_heading_pauses'}
+            if previous_settings != voice_settings:
+                continue
+            if ready and settings.get('_synthetic_pipeline') == 2 and not (JOB_STORAGE / identifier / 'synthetic-reference.wav').is_file():
+                continue
+            offset = speech_resume_offset(text, job['chunks'], ready)
+            if offset is None:
+                continue
+        prepared_length = sum(map(len, job['chunks'][:ready]))
+        rank = (state == 'complete', state in active_states, prepared_length, exact)
+        if best_rank is None or rank > best_rank:
+            best_rank = rank
+            best = identifier, job, offset
+    return best
 
 def speech_cache_key(job, text):
     settings = job['settings']; engine = settings.get('engine')

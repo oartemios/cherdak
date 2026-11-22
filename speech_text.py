@@ -43,3 +43,17 @@ def split_document_speech(text, engine, count, headings):
             pause_after.append(title[-1])
     chunks.extend(split_speech('\n'.join(paragraph), engine, count))
     return chunks, pause_after
+
+
+def speech_resume_offset(text, chunks, completed):
+    """Find the end of the prepared prefix in the original rendered text."""
+    offset = resume = 0
+    for index, chunk in enumerate(chunks, 1):
+        pattern = re.compile(r'\s*' + r'\s+'.join(re.escape(word) for word in chunk.split()))
+        match = pattern.match(text, offset)
+        if match is None:
+            return None
+        offset = match.end()
+        if index == completed:
+            resume = offset
+    return resume if not text[offset:].strip() else None
