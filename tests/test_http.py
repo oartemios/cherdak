@@ -136,7 +136,7 @@ class HTTPTests(unittest.TestCase):
         code, content_type, html = self.get('/')
         self.assertEqual((code, content_type), (200, 'text/html'))
         self.assertIn(b'/assets/app.js', html)
-        for asset in ('app.js', 'sidebar.js', 'markdown.js', 'notes.js', 'speech.js', 'settings.js', 'styles.css'):
+        for asset in ('app.js', 'sidebar.js', 'markdown.js', 'vendor/markdown-it.mjs', 'notes.js', 'speech.js', 'settings.js', 'styles.css'):
             code, content_type, body = self.get('/assets/' + asset)
             self.assertEqual(code, 200)
             self.assertTrue(body)
