@@ -172,6 +172,9 @@ class HTTPTests(unittest.TestCase):
         code, content_type, audio = self.get('/api/speech-part?id=' + identifier + '&index=0')
         self.assertEqual((code, content_type), (200, 'audio/wav'))
         self.assertEqual(audio, wav_bytes())
+        code, content_type, timeline = self.get('/api/speech-timeline?id=' + identifier)
+        self.assertEqual((code, content_type), (200, 'application/json'))
+        self.assertEqual(json.loads(timeline), {'durations': [0.1]})
         file = self.root / 'book/chapter.md'
         file.write_text('Внешняя правка.', encoding='utf-8')
         with self.assertRaises(HTTPError) as error:

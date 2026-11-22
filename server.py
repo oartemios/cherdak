@@ -428,6 +428,23 @@ class Handler(BaseHTTPRequestHandler):
                 if not valid_note_path(kind, path): return self.send_error(400)
                 return self.send_json(NOTES.list(kind, path))
             except (OSError, sqlite3.Error): return self.send_error(500)
+        if url.path == '/api/speech-timeline':
+            identifier = parse_qs(url.query).get('id', [''])[0]
+            with JOBS_LOCK:
+                job = JOBS.get(identifier)
+                if job is None: return self.send_error(404)
+                files = list(job['files'])
+            durations = []
+            for file, content_type in files:
+                duration = None
+                if content_type == 'audio/wav':
+                    try:
+                        with wave.open(str(file), 'rb') as audio:
+                            duration = audio.getnframes() / audio.getframerate()
+                    except (OSError, EOFError, wave.Error):
+                        pass
+                durations.append(duration)
+            return self.send_json({'durations': durations})
         if url.path in ('/api/speech-job', '/api/speech-part', '/api/speech-parts'):
             q = parse_qs(url.query); identifier = q.get('id', [''])[0]
             with JOBS_LOCK:
