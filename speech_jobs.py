@@ -13,7 +13,7 @@ import wave
 
 from app_config import BASE, SETTINGS
 from catalog_paths import valid_note_path as validate_note_path
-from speech_text import speech_resume_offset, split_speech
+from speech_text import prepare_speech_text, speech_resume_offset, split_speech
 from speech_service import synthesize, SpeechRequestError
 
 ROOTS = {'books': SETTINGS.books_root, 'games': SETTINGS.games_root}
@@ -36,6 +36,8 @@ def save_job(job_id, job):
     data['repairs'] = job.get('repairs', {})
     data['source_hash'] = job.get('source_hash')
     data['completed_at'] = job.get('completed_at')
+    if 'reference_text' in job:
+        data['reference_text'] = job['reference_text']
     temp = folder / 'job.json.tmp'
     temp.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
     os.replace(temp, folder / 'job.json')
@@ -105,6 +107,7 @@ def matching_speech_job(settings, text, fingerprint, revision):
 
 def speech_cache_key(job, text):
     settings = job['settings']; engine = settings.get('engine')
+    text = prepare_speech_text(text)
     if engine == 'local':
         identity = {'text': text, 'voice': settings.get('local_voice', 'ruslan'), 'speed': settings.get('speed', 1.0), 'version': 1}
         if SETTINGS.voices_dir != (BASE / 'voices').absolute() or SETTINGS.piper_python != (BASE / '.piper-env/bin/python').absolute() or SETTINGS.piper_sentence_silence != 0.45:
@@ -157,7 +160,7 @@ def synthetic_reference(job_id, job):
     sample = JOB_STORAGE / job_id / 'synthetic-reference.wav'
     if not sample.is_file() or not job['chunks']:
         raise RuntimeError('Synthetic voice reference is missing')
-    return sample, job['chunks'][0]
+    return sample, job.get('reference_text', job['chunks'][0])
 
 
 def run_speech_job(job_id):
@@ -188,6 +191,7 @@ def run_speech_job(job_id):
                         reference_file = folder / 'synthetic-reference.wav'
                         reference_temp = folder / 'synthetic-reference.tmp'
                         reference_temp.write_bytes(audio); os.replace(reference_temp, reference_file)
+                        job['reference_text'] = prepare_speech_text(chunk)
                     file = folder / (str(len(job['files'])) + '.audio')
                     temporary = folder / (file.name + '.tmp')
                     temporary.write_bytes(audio); os.replace(temporary, file)

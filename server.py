@@ -172,7 +172,7 @@ class Handler(BaseHTTPRequestHandler):
                 data.pop('_heading_pauses', None)
                 if pause_after: data['_heading_pauses'] = pause_after
                 if not chunks: return self.send_error(400)
-                fingerprint = hashlib.sha256(json.dumps({'text': text, 'settings': data, 'sentences': count}, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+                fingerprint = hashlib.sha256(json.dumps({'text': text, 'settings': data, 'sentences': count, 'split_version': 2}, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
                 with JOBS_LOCK:
                     match = matching_speech_job(data, text, fingerprint, revision)
                     if match:
@@ -267,7 +267,7 @@ class Handler(BaseHTTPRequestHandler):
                     # The immutable reference belongs to this job, not the possibly repaired first output.
                     reference = job['files'][0][0].parent / 'synthetic-reference.wav'
                     audio = reference.read_bytes()
-                    transcript = job['chunks'][0]
+                    transcript = job.get('reference_text', job['chunks'][0])
                     with wave.open(io.BytesIO(audio), 'rb') as wav:
                         if wav.getnframes() <= 0 or wav.getframerate() <= 0 or wav.getcomptype() != 'NONE': return self.send_error(400, 'Invalid reference audio')
                     voice_id = uuid.uuid4().hex

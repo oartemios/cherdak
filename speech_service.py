@@ -6,6 +6,7 @@ import subprocess
 import wave
 
 from speech_engines import generate_f5, generate_openai, generate_piper, generate_qwen, generate_voice_design
+from speech_text import prepare_speech_text
 
 
 class SpeechRequestError(RuntimeError):
@@ -30,6 +31,10 @@ def synthesize(data, settings, base, roots, cache_key, runner, synthetic_referen
     if not isinstance(force, bool) or not isinstance(no_cache, bool):
         raise SpeechRequestError(400, 'Invalid cache options')
     if not isinstance(text, str) or not 0 < len(text) <= 2000:
+        raise SpeechRequestError(400, 'Invalid text')
+    source_text = text
+    text = prepare_speech_text(source_text)
+    if not text:
         raise SpeechRequestError(400, 'Invalid text')
     repair_job, repair_index = data.get('repair_job'), data.get('repair_index')
     repair_key = None
@@ -88,7 +93,7 @@ def synthesize(data, settings, base, roots, cache_key, runner, synthetic_referen
             import hashlib
             cache = base / '.speech-cache' / hashlib.sha256((kind + ':' + path).encode()).hexdigest()
             cache.mkdir(parents=True, exist_ok=True)
-            key = cache_key({'settings': data}, text)
+            key = cache_key({'settings': data}, source_text)
             if key is None:
                 raise SpeechRequestError(400, 'Cannot construct cache key')
             cached = cache / (key + '.wav')
