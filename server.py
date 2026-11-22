@@ -50,7 +50,7 @@ class Handler(BaseHTTPRequestHandler):
         result['openai_key_configured'] = bool(os.environ.get('OPENAI_API_KEY'))
         configured = validate_settings(result['values'])
         directories = ('books_root', 'games_root', 'voices_dir', 'qwen_tts_model', 'qwen_asr_model')
-        executables = ('piper_python', 'mlx_python')
+        executables = ('piper_python', 'mlx_python', 'f5_python')
         result['path_checks'] = {name: getattr(configured, name).is_dir() for name in directories}
         result['path_checks'].update({name: getattr(configured, name).is_file() and os.access(getattr(configured, name), os.X_OK) for name in executables})
         return result
@@ -155,7 +155,7 @@ class Handler(BaseHTTPRequestHandler):
                 data.pop('_synthetic_pipeline', None)
                 engine = data.get('engine'); count = data.pop('sentences', 1); existing_only = data.pop('existing_only', False); expected_revision = data.pop('source_hash', None)
                 if not isinstance(existing_only, bool): return self.send_error(400)
-                if not isinstance(text, str) or not text.strip() or len(text) > 300000 or engine not in ('local', 'clone', 'openai', 'synthetic') or type(count) is not int or not 1 <= count <= 5: return self.send_error(400)
+                if not isinstance(text, str) or not text.strip() or len(text) > 300000 or engine not in ('local', 'clone', 'openai', 'synthetic', 'f5') or type(count) is not int or not 1 <= count <= 5: return self.send_error(400)
                 if data.get('kind') not in ROOTS or not isinstance(data.get('path'), str) or not data['path']: return self.send_error(400)
                 if engine == 'synthetic':
                     from synthetic_voice import voice_description
@@ -205,7 +205,7 @@ class Handler(BaseHTTPRequestHandler):
                 with GENERATION_LOCK:
                     audio, content_type = synthesize(data, SETTINGS, BASE, ROOTS, speech_cache_key, run_generation_process)
                 self.send_response(200); self.send_header('Content-Type', content_type); self.send_header('Content-Length', str(len(audio))); self.end_headers(); self.wfile.write(audio)
-            except SpeechRequestError as exc: self.send_error(exc.status, str(exc))
+            except SpeechRequestError as exc: self.send_json({'error': str(exc)}, exc.status)
             except (ValueError, OSError, TypeError): self.send_error(400)
             return
         if self.path == '/api/transcribe-sample':

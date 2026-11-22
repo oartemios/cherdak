@@ -6,10 +6,10 @@ const keyStatus = document.querySelector('#openai-key-status');
 const voice = document.querySelector('#ui-voice');
 const fields = [
   'books_root', 'games_root', 'voices_dir', 'qwen_tts_model', 'qwen_asr_model',
-  'piper_python', 'mlx_python', 'port', 'qwen_timeout', 'piper_timeout',
+  'piper_python', 'mlx_python', 'f5_python', 'f5_timeout', 'port', 'qwen_timeout', 'piper_timeout',
   'asr_timeout', 'piper_sentence_silence', 'openai_model',
 ];
-const numericFields = new Set(['port', 'qwen_timeout', 'piper_timeout', 'asr_timeout', 'piper_sentence_silence']);
+const numericFields = new Set(['port', 'f5_timeout', 'qwen_timeout', 'piper_timeout', 'asr_timeout', 'piper_sentence_silence']);
 let revision = null;
 let generationActive = false;
 
@@ -66,12 +66,19 @@ async function loadVoices() {
     const voices = await response.json();
     const group = document.querySelector('#ui-custom-voices');
     group.replaceChildren();
+    const f5Group = document.querySelector('#ui-f5-voices');
+    f5Group?.replaceChildren();
     for (const item of voices) {
       const option = document.createElement('option');
       option.value = 'clone:' + item.id;
       const labels = {joy:'радость', anxiety:'тревога', anger:'раздражение', whisper:'шёпот'};
       option.textContent = item.name + (labels[item.emotion] ? ' · ' + labels[item.emotion] : '');
       group.append(option);
+      if (f5Group) {
+        const f5Option = option.cloneNode(true);
+        f5Option.value = 'f5:' + item.id;
+        f5Group.append(f5Option);
+      }
     }
   } catch {
     browserStatus.textContent = 'Не удалось загрузить собственные голоса.';
@@ -82,7 +89,7 @@ loadVoices();
 
 function renderPathChecks(data) {
   if (!data.path_checks) return;
-  const labels = {books_root:'книги', games_root:'игры', voices_dir:'голоса Piper', qwen_tts_model:'Qwen TTS', qwen_asr_model:'Qwen ASR', piper_python:'Python Piper', mlx_python:'Python MLX'};
+  const labels = {books_root:'книги', games_root:'игры', voices_dir:'голоса Piper', qwen_tts_model:'Qwen TTS', qwen_asr_model:'Qwen ASR', piper_python:'Python Piper', mlx_python:'Python MLX', f5_python:'Python F5‑TTS'};
   const missing = Object.entries(data.path_checks).filter(([, found]) => !found).map(([key]) => labels[key] || key);
   const target = document.querySelector('#path-status');
   target.hidden = missing.length === 0;

@@ -1,4 +1,5 @@
 import hashlib
+import wave
 import io
 import json
 import os
@@ -171,6 +172,55 @@ class EngineTests(unittest.TestCase):
 
 
 class SpeechServiceTests(unittest.TestCase):
+    def test_f5_uses_saved_profile_and_its_own_cache(self):
+        import speech_jobs
+        import speech_service
+        from f5_voice_worker import accent_text
+
+        settings = app_config.validate_settings({})
+        data = {'engine': 'f5', 'profile': 'legacy', 'kind': 'books', 'path': 'book.md', 'text': 'Замо́к.'}
+        transcript = 'Образец речи.'
+        audio = b'RIFF' + bytes(48)
+
+        def runner(command, timeout, repair_key, text):
+            self.assertEqual(command[0], str(settings.f5_python))
+            self.assertEqual(Path(command[1]).name, 'f5_voice_worker.py')
+            self.assertEqual(timeout, settings.f5_timeout)
+            request = json.loads(text)
+            self.assertEqual(request['sample'], str(sample))
+            self.assertEqual(request['transcript'], transcript)
+            self.assertEqual(request['text'], data['text'])
+            Path(request['output']).write_bytes(audio)
+            return type('Result', (), {'returncode': 0})()
+
+        with tempfile.TemporaryDirectory() as folder:
+            base = Path(folder)
+            reference = base / '.voice-sample'
+            reference.mkdir()
+            sample = reference / 'reference.wav'
+            with wave.open(str(sample), 'wb') as wav:
+                wav.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+                wav.writeframes(bytes(32000))
+            (reference / 'transcript.txt').write_text(transcript, encoding='utf-8')
+            with patch.object(speech_jobs, 'BASE', base):
+                key = speech_jobs.speech_cache_key
+                self.assertNotEqual(key({'settings': data}, data['text']),
+                                    key({'settings': dict(data, engine='clone')}, data['text']))
+                args = (data, settings, base, {'books': base}, key)
+                self.assertEqual(speech_service.synthesize(*args, runner), (audio, 'audio/wav'))
+                self.assertEqual(speech_service.synthesize(*args, None), (audio, 'audio/wav'))
+                with wave.open(str(sample), 'wb') as wav:
+                    wav.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+                    wav.writeframes(bytes(13 * 8000 * 2))
+                with self.assertRaises(speech_service.SpeechRequestError) as error:
+                    speech_service.synthesize(*args, runner)
+                self.assertEqual(error.exception.status, 422)
+
+        from unittest.mock import Mock
+        accentizer = Mock()
+        accent_text(accentizer, data['text'])
+        self.assertEqual(accentizer.process_all.call_args.args[0], 'Зам+ок.')
+
     def test_preview_does_not_create_cache_and_final_reuses_cache(self):
         import speech_service
         settings = app_config.load_settings(Path('/nonexistent/catalog-test-config.json'))

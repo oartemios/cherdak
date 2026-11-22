@@ -49,3 +49,19 @@ def generate_openai(settings, text, voice, key):
     request = urllib.request.Request('https://api.openai.com/v1/audio/speech', data=payload, headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'})
     with urllib.request.urlopen(request, timeout=90) as response:
         return response.read()
+
+
+def generate_f5(settings, text, sample, transcript, runner, repair_key=None):
+    with tempfile.TemporaryDirectory() as folder:
+        output = Path(folder) / 'speech.wav'
+        request = json.dumps({
+            'sample': str(sample),
+            'transcript': transcript,
+            'text': text,
+            'output': str(output),
+        }, ensure_ascii=False)
+        command = [str(settings.f5_python), str(Path(__file__).with_name('f5_voice_worker.py'))]
+        result = runner(command, settings.f5_timeout, repair_key, request)
+        if result.returncode or not output.is_file() or output.stat().st_size <= 44:
+            raise SpeechEngineError('F5-TTS did not produce audio')
+        return output.read_bytes()
