@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const names = ['books_root','games_root','voices_dir','qwen_tts_model','qwen_asr_model','piper_python','mlx_python','port','qwen_timeout','piper_timeout','asr_timeout','piper_sentence_silence','openai_model'];
-const defaults = {books_root:'~/Documents/stories/books',games_root:'~/Development/games',voices_dir:'voices',qwen_tts_model:'models/qwen3-tts-0.6b',qwen_asr_model:'~/asr',piper_python:'.piper-env/bin/python',mlx_python:'.clone-env/bin/python',port:8765,qwen_timeout:150,piper_timeout:120,asr_timeout:300,piper_sentence_silence:.45,openai_model:'gpt-4o-mini-tts'};
+const names = ['books_root','games_root','voices_dir','qwen_tts_model','qwen_asr_model','piper_python','mlx_python','f5_python','f5_timeout','port','qwen_timeout','piper_timeout','asr_timeout','piper_sentence_silence','openai_model'];
+const defaults = {books_root:'~/Documents/stories/books',games_root:'~/Development/games',voices_dir:'voices',qwen_tts_model:'models/qwen3-tts-0.6b',qwen_asr_model:'~/asr',piper_python:'.piper-env/bin/python',mlx_python:'.clone-env/bin/python',f5_python:'.f5-env/bin/python',f5_timeout:600,port:8765,qwen_timeout:150,piper_timeout:120,asr_timeout:300,piper_sentence_silence:.45,openai_model:'gpt-4o-mini-tts'};
 const ids = [...names,'settings-form','save-settings','server-message','path-status','ui-status','openai-key-status','ui-voice','ui-custom-voices','ui-theme','ui-view','ui-group','ui-sidebar','ui-sentences','ui-speed'];
 const elements = new Map(ids.map(id => [id, {value:'',textContent:'',hidden:false,disabled:false,options:[],handlers:{},classList:{toggle(){}},addEventListener(type,fn){this.handlers[type]=fn;}}]));
 elements.get('settings-form').reportValidity = () => true;
