@@ -256,8 +256,12 @@ body.light #speech-panel {
 }
 .speech-player-row input[type="range"] {
   width: 100%;
+  min-width: 0;
   height: 20px;
   margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
   accent-color: var(--speech-primary);
 }
 .speech-player-extra:has(button:not([hidden])) { margin-top: 8px; }

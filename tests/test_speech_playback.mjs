@@ -40,12 +40,12 @@ assert.equal(original.result.end, 5);
 
 // Exercise the handlers in the order a native range input fires them.
 const slider = {value: 0, setAttribute() {}};
-const seeks = [], pointerEvents = {};
+const seeks = [], pointerEvents = {}, clockLabels = new Map();
 const controls = runInNewContext(
   source.slice(source.indexOf('let seekSession ='), source.indexOf('function updatePlaybackProgress')) +
   `\nseekSession = session;
     updatePlaybackClock(false);
-    ({refresh: () => updatePlaybackClock(false), enterIdle: () => { playerState = "idle"; }, session: seekSession});`,
+    ({refresh: (completed = false) => updatePlaybackClock(completed), enterIdle: () => { playerState = "idle"; }, session: seekSession});`,
   {
     session: {paused: true, position: 1, timeline},
     playbackBar: slider,
@@ -55,7 +55,10 @@ const controls = runInNewContext(
     playerState: 'paused',
     lifecycle: new AbortController(),
     document: {
-      querySelector: () => ({}),
+      querySelector: selector => {
+        if (!clockLabels.has(selector)) clockLabels.set(selector, {});
+        return clockLabels.get(selector);
+      },
       addEventListener: (event, handler) => { pointerEvents[event] = handler; },
     },
     playFinal: (previous, seek) => seeks.push({time: seek.time, paused: seek.paused}),
@@ -91,6 +94,21 @@ slider.oninput();
 assert.equal(controls.session.position, 3.2);
 assert.equal(controls.session.pendingPosition, true);
 assert.equal(seeks.length, 2, 'choosing a position before Play must not start audio');
+
+// At around three quarters of a short recording, both labels used to show 0:03.
+controls.session.timeline = [{start: 0, end: 2}, {start: 2, end: 3.9}];
+controls.session.position = 3;
+controls.refresh();
+assert.equal(slider.value / slider.max, 3 / 3.9);
+assert.equal(clockLabels.get('#playback-elapsed').textContent, '0:03');
+assert.equal(clockLabels.get('#playback-duration').textContent, '0:04');
+slider.onpointerdown();
+controls.refresh(true);
+assert.equal(slider.value, slider.max, 'completion must reach the end even if the pointer has not moved');
+assert.equal(clockLabels.get('#playback-elapsed').textContent, clockLabels.get('#playback-duration').textContent);
+pointerEvents.pointerup();
+assert.equal(slider.value, slider.max);
+
 
 // Load and extend the timeline before playback, including an MP3 without server-side metadata.
 const idleTimeline = source.slice(source.indexOf('function createSeekSession'), source.indexOf('async function startSpeechJob'));
