@@ -269,3 +269,59 @@ body.light #speech-panel {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+.markdown {
+  --markdown-border: #475368;
+  --markdown-surface: #222a37;
+  --markdown-accent: #a8baff;
+}
+body.light .markdown {
+  --markdown-border: #cbd5e3;
+  --markdown-surface: #eef3fa;
+  --markdown-accent: #506b9f;
+}
+.markdown table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin-block: 1em;
+}
+.markdown :is(th, td) {
+  border: 1px solid var(--markdown-border);
+  padding: .35em .75em;
+}
+.markdown :is(thead, tbody tr:nth-child(even)) {
+  background: var(--markdown-surface);
+}
+.markdown hr {
+  border: 0;
+  border-top: 1px solid var(--markdown-border);
+  margin-block: 1.5em;
+}
+.markdown pre code {
+  padding: 0;
+  background: transparent;
+}
+.markdown-task {
+  list-style: none;
+}
+.markdown-task input {
+  margin-inline: -1.25em .35em;
+  accent-color: var(--markdown-accent);
+}
+.markdown .markdown-callout {
+  margin: 1em 0;
+  padding: .7em 1em;
+  border-inline-start: 3px solid var(--callout-accent, var(--markdown-accent));
+  border-radius: 6px;
+  background: var(--markdown-surface);
+  color: inherit;
+}
+.markdown-callout-tip { --callout-accent: #3c9c72; }
+.markdown-callout-important { --callout-accent: #a177d7; }
+.markdown-callout-warning { --callout-accent: #be8535; }
+.markdown-callout-caution { --callout-accent: #cf6868; }
+.markdown-callout-title { font-weight: 700; }
+.markdown-callout > p:first-of-type { margin-top: .35em; }
+.markdown-callout > :last-child { margin-bottom: 0; }

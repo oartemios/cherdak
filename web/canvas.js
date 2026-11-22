@@ -1,6 +1,6 @@
 import { markdown } from './markdown.js';
 
-export function renderCanvas(text) {
+export function renderCanvas(text, context) {
   const data = JSON.parse(text);
   if (!Array.isArray(data.nodes) || (data.edges != null && !Array.isArray(data.edges))) throw Error('Некорректный холст');
   const nodes = data.nodes.filter(n => n && typeof n.id === 'string' && [n.x,n.y,n.width,n.height].every(Number.isFinite) && n.width > 0 && n.height > 0);
@@ -14,6 +14,6 @@ export function renderCanvas(text) {
   const byId=new Map(nodes.map(n=>[n.id,n]));
   for(const edge of data.edges||[]) {const a=byId.get(edge.fromNode),b=byId.get(edge.toNode);if(!a||!b)continue;const from=point(a,edge.fromSide),to=point(b,edge.toSide);const line=document.createElementNS(svg.namespaceURI,'line');for(const [key,value] of Object.entries({x1:from.x,y1:from.y,x2:to.x,y2:to.y}))line.setAttribute(key,value);svg.append(line);if(edge.toEnd!=='none'){const angle=Math.atan2(to.y-from.y,to.x-from.x), size=9;const arrow=document.createElementNS(svg.namespaceURI,'polygon');arrow.setAttribute('points',`${to.x},${to.y} ${to.x-size*Math.cos(angle-.45)},${to.y-size*Math.sin(angle-.45)} ${to.x-size*Math.cos(angle+.45)},${to.y-size*Math.sin(angle+.45)}`);svg.append(arrow)}if(edge.label){const label=document.createElementNS(svg.namespaceURI,'text');label.setAttribute('x',(from.x+to.x)/2);label.setAttribute('y',(from.y+to.y)/2-6);label.textContent=edge.label;svg.append(label)}}
   stage.append(svg);
-  for(const n of [...nodes].sort((a,b)=>(a.type==='group'?-1:0)-(b.type==='group'?-1:0))){const card=document.createElement('section');card.className='canvas-node canvas-'+(['text','file','group','link'].includes(n.type)?n.type:'unknown');card.style.cssText=`left:${n.x-left}px;top:${n.y-top}px;width:${n.width}px;height:${n.height}px`;if(/^[1-6]$/.test(n.color||''))card.dataset.color=n.color;if(n.type==='text'){card.innerHTML=markdown(n.text||'')}else{const title=document.createElement('span');title.textContent=n.label||n.file||n.url||'Неподдерживаемый элемент';card.append(title)}stage.append(card)}
+  for(const n of [...nodes].sort((a,b)=>(a.type==='group'?-1:0)-(b.type==='group'?-1:0))){const card=document.createElement('section');card.className='canvas-node canvas-'+(['text','file','group','link'].includes(n.type)?n.type:'unknown');card.style.cssText=`left:${n.x-left}px;top:${n.y-top}px;width:${n.width}px;height:${n.height}px`;if(/^[1-6]$/.test(n.color||''))card.dataset.color=n.color;if(n.type==='text'){card.classList.add('markdown');card.innerHTML=markdown(n.text||'', context)}else{const title=document.createElement('span');title.textContent=n.label||n.file||n.url||'Неподдерживаемый элемент';card.append(title)}stage.append(card)}
   container.append(stage);return container;
 }
