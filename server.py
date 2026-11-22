@@ -19,7 +19,7 @@ import shutil
 from app_config import BASE, SETTINGS, validate_settings
 from catalog_paths import valid_note_path as validate_note_path
 from speech_jobs import (JOBS, JOBS_LOCK, GENERATION_LOCK, REPAIR_PROCESSES, EXECUTOR,
-                         save_job, restore_jobs, document_revision,
+                         save_job, restore_jobs, document_revision, matching_speech_job,
                          speech_cache_key, run_speech_job, run_generation_process, regenerate_part)
 from speech_text import split_document_speech, split_speech
 from speech_service import synthesize, SpeechRequestError
@@ -167,27 +167,50 @@ class Handler(BaseHTTPRequestHandler):
                 headings = data.pop('headings', [])
                 if not isinstance(headings, list) or any(not isinstance(title, str) for title in headings):
                     return self.send_error(400)
-                chunks, pause_after = split_document_speech(text, engine, count, set(headings))
+                headings = set(headings)
+                chunks, pause_after = split_document_speech(text, engine, count, headings)
                 data.pop('_heading_pauses', None)
                 if pause_after: data['_heading_pauses'] = pause_after
                 if not chunks: return self.send_error(400)
                 fingerprint = hashlib.sha256(json.dumps({'text': text, 'settings': data, 'sentences': count}, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
                 with JOBS_LOCK:
-                    for identifier, existing in JOBS.items():
-                        if existing['fingerprint'] == fingerprint and existing['state'] in ('queued', 'generating', 'complete', 'paused', 'pausing', 'error') and not existing['cancelled']:
-                            if existing['state'] in ('paused', 'error') and not existing_only:
-                                if existing['state'] == 'error' and len(existing['files']) < len(existing['chunks']):
-                                    index = len(existing['files']); failed = existing['chunks'][index]
-                                    parts = split_speech(failed, 'clone', 1)
-                                    if len(parts) == 1 and len(failed) > 80:
-                                        midpoint = len(failed) // 2
-                                        cut = failed.rfind(' ', 0, midpoint + 1)
-                                        if cut < 1: cut = failed.find(' ', midpoint)
-                                        if cut > 0: parts = [failed[:cut].strip(), failed[cut:].strip()]
-                                    existing['chunks'][index:index + 1] = parts
-                                existing['state'] = 'queued'; existing['error'] = ''; save_job(identifier, existing)
-                                EXECUTOR.submit(run_speech_job, identifier)
-                            return self.send_json({'id': identifier, 'total': len(existing['chunks']), 'heading_pauses': heading_pause_indices(existing)})
+                    match = matching_speech_job(data, text, fingerprint, revision)
+                    if match:
+                        identifier, existing, offset = match
+                        if existing['state'] in ('paused', 'error') and not existing_only:
+                            updated = dict(existing, chunks=list(existing['chunks']), state='queued', error='')
+                            ready = len(existing['files'])
+                            if offset is not None:
+                                # Keep the existing audio, repairs and synthetic reference at their original indices.
+                                line_start = text.rfind('\n', 0, offset) + 1
+                                line_end = text.find('\n', offset)
+                                if line_end == -1:
+                                    line_end = len(text)
+                                tail_headings = headings
+                                heading_tail = text[offset:line_end].strip()
+                                if heading_tail and text[line_start:line_end].strip() in headings:
+                                    tail_headings = headings | {heading_tail}
+                                remaining, tail_pauses = split_document_speech(text[offset:], engine, count, tail_headings)
+                                prefix = existing['chunks'][:ready]
+                                pauses = set(existing['settings'].get('_heading_pauses', []))
+                                saved_settings = {key: value for key, value in data.items() if key != '_heading_pauses'}
+                                kept_pauses = [chunk for chunk in prefix if chunk in pauses] + tail_pauses
+                                if kept_pauses:
+                                    saved_settings['_heading_pauses'] = kept_pauses
+                                updated.update(chunks=prefix + remaining, settings=saved_settings, fingerprint=fingerprint)
+                            elif existing['state'] == 'error' and ready < len(existing['chunks']):
+                                failed = existing['chunks'][ready]
+                                parts = split_speech(failed, 'clone', 1)
+                                if len(parts) == 1 and len(failed) > 80:
+                                    midpoint = len(failed) // 2
+                                    cut = failed.rfind(' ', 0, midpoint + 1)
+                                    if cut < 1: cut = failed.find(' ', midpoint)
+                                    if cut > 0: parts = [failed[:cut].strip(), failed[cut:].strip()]
+                                updated['chunks'][ready:ready + 1] = parts
+                            save_job(identifier, updated)
+                            existing.update(updated)
+                            EXECUTOR.submit(run_speech_job, identifier)
+                        return self.send_json({'id': identifier, 'total': len(existing['chunks']), 'heading_pauses': heading_pause_indices(existing)})
                     if existing_only: return self.send_error(404, 'No prepared audio')
                     identifier = uuid.uuid4().hex
                     JOBS[identifier] = {'fingerprint': fingerprint, 'settings': data, 'chunks': chunks, 'files': [], 'state': 'queued', 'error': '', 'cancelled': False, 'source_hash': revision}
