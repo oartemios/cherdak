@@ -421,7 +421,7 @@ class Handler(BaseHTTPRequestHandler):
                 ]
                 if not candidates: return self.send_json({'job': None})
                 identifier, job = max(candidates, key=lambda item: item[1].get('completed_at') or '')
-                return self.send_json({'job': {'id': identifier, 'total': len(job['chunks']), 'text': ' '.join(job['chunks']), 'settings': job['settings'], 'heading_pauses': heading_pause_indices(job)}})
+                return self.send_json({'job': {'id': identifier, 'total': len(job['chunks']), 'text': ' '.join(job['chunks']), 'settings': job['settings'], 'heading_pauses': heading_pause_indices(job), 'source_hash': job.get('source_hash')}})
         if url.path == '/api/notes':
             try:
                 q = parse_qs(url.query); kind = q.get('kind', [''])[0]; path = q.get('path', [''])[0]

@@ -45,13 +45,14 @@ const controls = runInNewContext(
   source.slice(source.indexOf('let seekSession ='), source.indexOf('function updatePlaybackProgress')) +
   `\nseekSession = session;
     updatePlaybackClock(false);
-    ({refresh: () => updatePlaybackClock(false)});`,
+    ({refresh: () => updatePlaybackClock(false), enterIdle: () => { playerState = "idle"; }, session: seekSession});`,
   {
     session: {paused: true, position: 1, timeline},
     playbackBar: slider,
     playbackSchedule: [],
     playbackTotal: timeline.length,
     playbackContext: null,
+    playerState: 'paused',
     lifecycle: new AbortController(),
     document: {
       querySelector: () => ({}),
@@ -84,6 +85,34 @@ slider.oninput();
 slider.onpointercancel();
 assert.equal(slider.value, 1);
 assert.equal(seeks.length, 2);
+controls.enterIdle();
+slider.value = 3.2;
+slider.oninput();
+assert.equal(controls.session.position, 3.2);
+assert.equal(controls.session.pendingPosition, true);
+assert.equal(seeks.length, 2, 'choosing a position before Play must not start audio');
+
+// Load and extend the timeline before playback, including an MP3 without server-side metadata.
+const idleTimeline = source.slice(source.indexOf('function createSeekSession'), source.indexOf('async function startSpeechJob'));
+const idleRequests = [], idleRanges = [];
+const idleScope = {
+  AbortController, URLSearchParams, speechTimeline, job: {id: 'saved', total: 2, heading_pauses: [0]},
+  playerState: 'idle', seekSession: null, idleTimelineRequest: null,
+  playbackMode: {value: 'original'}, speechGap: {value: '0.25'},
+  updatePlaybackClock() { idleRanges.push(idleScope.seekSession.timeline.at(-1).end); },
+  async fetch(url) {
+    idleRequests.push(url);
+    if (url.startsWith('/api/speech-timeline')) return {ok: true, json: async () => ({durations: [2, null]})};
+    return {ok: true, arrayBuffer: async () => new ArrayBuffer(0)};
+  },
+  window: {OfflineAudioContext: class {
+    async decodeAudioData() { return {duration: 3}; }
+  }},
+};
+await runInNewContext(idleTimeline + '\nloadIdleTimeline(job);', idleScope);
+assert.deepEqual(idleRanges, [2, 5.8]);
+assert.deepEqual(idleRequests, ['/api/speech-timeline?id=saved', '/api/speech-part?id=saved&index=1']);
+assert.equal(idleScope.playbackTotal, 2);
 
 // Start a prepared recording at an offset inside the second chunk and continue into the third.
 const starts = [], requested = [];
@@ -128,7 +157,7 @@ const scope = {
   }},
 };
 const player = source.slice(source.indexOf('async function playFinal('), source.indexOf('async function setPlaybackPaused('));
-await runInNewContext(player + '\nplayFinal(false, seek);', scope);
+await runInNewContext(idleTimeline + player + '\nplayFinal(false, seek);', scope);
 assert.deepEqual(requested, [1, 2]);
 assert.deepEqual(starts.map(item => item.offset), [1, 0]);
 assert.equal(starts[1].time, starts[0].time + 2.25);
