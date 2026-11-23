@@ -137,9 +137,12 @@ body.project-page .hide-right .document-toolbar{padding-right:40px}
 body.project-page .top{position:sticky;top:0;z-index:20}
 body.project-page .project-layout>.file-tree,body.project-page .project-layout>.sidebar,body.project-page .search-panel{top:56px}
 
+body.project-page .markdown [id^="heading-"]{scroll-margin-top:72px}
+
 /* Keep document navigation and panel controls visible while reading. */
 @media(min-width:901px){
   body.project-page .document-toolbar{position:sticky;top:56px;z-index:4;background:#1f242c}
+  body.project-page .markdown [id^="heading-"]{scroll-margin-top:140px}
   body.light.project-page .document-toolbar{background:#fff}
   body.project-page .project-layout > .panel-toggle{position:fixed;top:68px}
   body.project-page .project-layout > .toggle-left{left:196px}

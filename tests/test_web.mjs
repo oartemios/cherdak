@@ -49,7 +49,7 @@ for (const id of ['outline', 'notes', 'speech']) {
 globalThis.document = { querySelector(selector) { return elements.get(selector); } };
 const saved = new Map();
 globalThis.localStorage = { getItem(key) { return saved.get(key) ?? null; }, setItem(key, value) { saved.set(key, value); } };
-const { initSidebar } = await loadModule('../web/sidebar.js');
+const { initSidebar, renderOutline } = await loadModule('../web/sidebar.js');
 initSidebar();
 assert.equal(elements.get('#outline-panel').hidden, false);
 assert.equal(elements.get('#notes-panel').hidden, true);
@@ -59,4 +59,32 @@ assert.equal(elements.get('#notes-panel').hidden, false);
 assert.equal(elements.get('#tab-notes')['aria-pressed'], 'true');
 initSidebar();
 assert.equal(elements.get('#notes-panel').hidden, false);
+const calls = [];
+const heading = {
+  tagName: 'H2', textContent: 'Целевой раздел', isConnected: true,
+  focus(options) { calls.push(['focus', options]); },
+  scrollIntoView(options) { calls.push(['scroll', options]); },
+};
+globalThis.document.createElement = () => ({style: {}, get hash() { return this.href; }});
+globalThis.location = {hash: ''};
+const state = {catalogIndex: 2};
+globalThis.history = {
+  state, replaceState(value, title, hash) { calls.push(['history', value, hash]); },
+};
+const outline = {replaceChildren() {}, append(link) { this.link = link; }};
+const article = {querySelectorAll() { return [heading]; }};
+renderOutline(article, outline);
+assert.equal(outline.link.href, '#heading-0');
+outline.link.onclick({button: 0, ctrlKey: true, preventDefault() { assert.fail('modified click'); }});
+assert.deepEqual(calls, []);
+outline.link.onclick({button: 0, preventDefault() { calls.push(['prevent']); }});
+assert.deepEqual(calls, [
+  ['prevent'], ['history', state, '#heading-0'], ['focus', {preventScroll: true}],
+  ['scroll', {block: 'start', inline: 'nearest'}],
+]);
+calls.length = 0;
+location.hash = '#heading-0';
+renderOutline(article, outline);
+assert.deepEqual(calls.map(([action]) => action), ['focus', 'scroll']);
+
 console.log('Markdown and sidebar checks passed');
