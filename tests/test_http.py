@@ -175,6 +175,10 @@ class HTTPTests(unittest.TestCase):
         code, content_type, timeline = self.get('/api/speech-timeline?id=' + identifier)
         self.assertEqual((code, content_type), (200, 'application/json'))
         self.assertEqual(json.loads(timeline), {'durations': [0.1]})
+        _, _, latest = self.get('/api/speech-latest?kind=books&path=book%2Fchapter.md&engine=local')
+        prepared = json.loads(latest)['job']
+        self.assertEqual(prepared['id'], identifier)
+        self.assertEqual(prepared['source_hash'], document['source_hash'])
         file = self.root / 'book/chapter.md'
         file.write_text('Внешняя правка.', encoding='utf-8')
         with self.assertRaises(HTTPError) as error:

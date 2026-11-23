@@ -38,6 +38,100 @@ const original = run('original', 0);
 assert.deepEqual(original.events, [['start', 3, 0]]);
 assert.equal(original.result.end, 5);
 
+// Exercise the handlers in the order a native range input fires them.
+const slider = {value: 0, setAttribute() {}};
+const seeks = [], pointerEvents = {}, clockLabels = new Map();
+const controls = runInNewContext(
+  source.slice(source.indexOf('let seekSession ='), source.indexOf('function updatePlaybackProgress')) +
+  `\nseekSession = session;
+    updatePlaybackClock(false);
+    ({refresh: (completed = false) => updatePlaybackClock(completed), enterIdle: () => { playerState = "idle"; }, session: seekSession});`,
+  {
+    session: {paused: true, position: 1, timeline},
+    playbackBar: slider,
+    playbackSchedule: [],
+    playbackTotal: timeline.length,
+    playbackContext: null,
+    playerState: 'paused',
+    lifecycle: new AbortController(),
+    document: {
+      querySelector: selector => {
+        if (!clockLabels.has(selector)) clockLabels.set(selector, {});
+        return clockLabels.get(selector);
+      },
+      addEventListener: (event, handler) => { pointerEvents[event] = handler; },
+    },
+    playFinal: (previous, seek) => seeks.push({time: seek.time, paused: seek.paused}),
+  },
+);
+assert.equal(slider.disabled, false);
+slider.onpointerdown();
+slider.value = 1.5;
+controls.refresh();
+assert.equal(slider.value, 1.5, 'a playback tick must not overwrite the drag');
+slider.oninput();
+slider.value = 3.8;
+slider.oninput();
+slider.onchange();
+assert.equal(seeks.length, 0);
+pointerEvents.pointerup();
+slider.onchange();
+assert.deepEqual(seeks, [{time: 3.8, paused: true}], 'one seek per drag, preserving pause');
+slider.value = 4.5;
+slider.oninput(); // Keyboard and assistive technology trigger input without pointerdown.
+slider.onchange();
+assert.deepEqual(seeks.at(-1), {time: 4.5, paused: true});
+assert.equal(seeks.length, 2);
+slider.onpointerdown();
+slider.value = 5;
+slider.oninput();
+slider.onpointercancel();
+assert.equal(slider.value, 1);
+assert.equal(seeks.length, 2);
+controls.enterIdle();
+slider.value = 3.2;
+slider.oninput();
+assert.equal(controls.session.position, 3.2);
+assert.equal(controls.session.pendingPosition, true);
+assert.equal(seeks.length, 2, 'choosing a position before Play must not start audio');
+
+// At around three quarters of a short recording, both labels used to show 0:03.
+controls.session.timeline = [{start: 0, end: 2}, {start: 2, end: 3.9}];
+controls.session.position = 3;
+controls.refresh();
+assert.equal(slider.value / slider.max, 3 / 3.9);
+assert.equal(clockLabels.get('#playback-elapsed').textContent, '0:03');
+assert.equal(clockLabels.get('#playback-duration').textContent, '0:04');
+slider.onpointerdown();
+controls.refresh(true);
+assert.equal(slider.value, slider.max, 'completion must reach the end even if the pointer has not moved');
+assert.equal(clockLabels.get('#playback-elapsed').textContent, clockLabels.get('#playback-duration').textContent);
+pointerEvents.pointerup();
+assert.equal(slider.value, slider.max);
+
+
+// Load and extend the timeline before playback, including an MP3 without server-side metadata.
+const idleTimeline = source.slice(source.indexOf('function createSeekSession'), source.indexOf('async function startSpeechJob'));
+const idleRequests = [], idleRanges = [];
+const idleScope = {
+  AbortController, URLSearchParams, speechTimeline, job: {id: 'saved', total: 2, heading_pauses: [0]},
+  playerState: 'idle', seekSession: null, idleTimelineRequest: null,
+  playbackMode: {value: 'original'}, speechGap: {value: '0.25'},
+  updatePlaybackClock() { idleRanges.push(idleScope.seekSession.timeline.at(-1).end); },
+  async fetch(url) {
+    idleRequests.push(url);
+    if (url.startsWith('/api/speech-timeline')) return {ok: true, json: async () => ({durations: [2, null]})};
+    return {ok: true, arrayBuffer: async () => new ArrayBuffer(0)};
+  },
+  window: {OfflineAudioContext: class {
+    async decodeAudioData() { return {duration: 3}; }
+  }},
+};
+await runInNewContext(idleTimeline + '\nloadIdleTimeline(job);', idleScope);
+assert.deepEqual(idleRanges, [2, 5.8]);
+assert.deepEqual(idleRequests, ['/api/speech-timeline?id=saved', '/api/speech-part?id=saved&index=1']);
+assert.equal(idleScope.playbackTotal, 2);
+
 // Start a prepared recording at an offset inside the second chunk and continue into the third.
 const starts = [], requested = [];
 const job = {id: 'prepared', total: 3, heading_pauses: [0]};
@@ -47,7 +141,10 @@ const session = {job, durations: [...durations], timeline: speechTimeline(durati
 const scope = {
   seek: {session, time: 3.8, paused: false},
   generation: 0, playbackSources: [], playbackSchedule: [],
-  stopAudio() { scope.generation++; },
+  stopAudio(retainedSession) {
+    assert.equal(retainedSession, session, 'seeking must keep the slider timeline active');
+    scope.generation++;
+  },
   updatePlaybackClock() {}, updatePlaybackProgress() {}, updateSpeechButtons() {},
   speechStatus: {}, AbortController, URLSearchParams,
   setInterval() {}, clearInterval() {},
@@ -78,7 +175,7 @@ const scope = {
   }},
 };
 const player = source.slice(source.indexOf('async function playFinal('), source.indexOf('async function setPlaybackPaused('));
-await runInNewContext(player + '\nplayFinal(false, seek);', scope);
+await runInNewContext(idleTimeline + player + '\nplayFinal(false, seek);', scope);
 assert.deepEqual(requested, [1, 2]);
 assert.deepEqual(starts.map(item => item.offset), [1, 0]);
 assert.equal(starts[1].time, starts[0].time + 2.25);
